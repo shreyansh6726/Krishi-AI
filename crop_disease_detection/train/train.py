@@ -5,7 +5,9 @@ from tensorflow.keras import layers, models
 # ==========================================
 # STEP 1: Locate Dataset in the Local KaggleHub Cache
 # ==========================================
-kagglehub_cache = r"C:\Users\shrey\.cache\kagglehub\datasets"
+user_cache = os.path.join(os.path.expanduser("~"), ".cache", "kagglehub", "datasets")
+shrey_cache = r"C:\Users\shrey\.cache\kagglehub\datasets"
+kagglehub_cache = user_cache if os.path.exists(user_cache) else shrey_cache
 dataset_root = os.path.join(
     kagglehub_cache,
     "vipoooool",
@@ -145,18 +147,24 @@ print("\nModel compiled successfully!")
 # ==========================================
 EPOCHS = 10  # Number of full passes through the dataset (increase later if needed)
 
-print(f"\nStarting model training for {EPOCHS} epochs...")
-history = model.fit(
-    train_dataset,
-    validation_data=valid_dataset,
-    epochs=EPOCHS
-)
-
-# Save the trained model safely using a relative path
 script_dir = os.path.dirname(os.path.abspath(__file__))
 save_dir = os.path.join(script_dir, "..", "model")
 os.makedirs(save_dir, exist_ok=True)
 model_path = os.path.join(save_dir, "crop_disease_cnn_model.keras")
+
+checkpoint = tf.keras.callbacks.ModelCheckpoint(
+    filepath=model_path,
+    save_best_only=False,
+    verbose=1
+)
+
+print(f"\nStarting model training for {EPOCHS} epochs...")
+history = model.fit(
+    train_dataset,
+    validation_data=valid_dataset,
+    epochs=EPOCHS,
+    callbacks=[checkpoint]
+)
 
 model.save(model_path)
 print(f"\nTraining complete! Custom CNN model successfully saved at: {model_path}")

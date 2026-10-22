@@ -52,14 +52,29 @@ class ChatHandler(SimpleHTTPRequestHandler):
                     image_file.write(base64.b64decode(encoded))
                     image_path = image_file.name
 
-            api_key = os.getenv("GROQ_API_KEY")
-            if not api_key:
-                raise RuntimeError("GROQ_API_KEY is not set in the project .env file.")
-            client = create_groq_client(api_key)
-            reply = chat_response(client, message, self.state, self.history, image_path)
+            load_dotenv(os.path.join(PROJECT_DIR, ".env"), override=True)
+            use_local = os.getenv("USE_LOCAL_NLP", "false").lower() in ("true", "1", "yes")
+
+            if use_local:
+                from native_language_nlp.local_llm import local_chat_response
+                reply = local_chat_response(message, self.state, self.history, image_path)
+            else:
+                api_key = os.getenv("GROQ_API_KEY")
+                if not api_key:
+                    from native_language_nlp.local_llm import local_chat_response
+                    reply = local_chat_response(message, self.state, self.history, image_path)
+                else:
+                    client = create_groq_client(api_key)
+                    reply = chat_response(client, message, self.state, self.history, image_path)
+
             self._send_json(200, {"reply": reply})
         except (ValueError, OSError, RuntimeError, KeyError) as error:
             self._send_json(400, {"error": str(error)})
+        except Exception as error:
+            if "groq" in getattr(error.__class__, "__module__", ""):
+                self._send_json(400, {"error": f"Groq API Error: {error}"})
+            else:
+                raise
         finally:
             if image_path and os.path.isfile(image_path):
                 os.remove(image_path)
