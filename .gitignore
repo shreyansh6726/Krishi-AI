@@ -505,3 +505,5 @@ Thumbs.db
 sample.py
 catboost_info/
 server.js
+*.safetensors
+*.gguf

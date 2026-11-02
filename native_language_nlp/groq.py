@@ -62,34 +62,79 @@ PRICE_FIELDS = [
 ]
 
 
+DEFAULT_DISEASE_LABELS = [
+    "Apple___Apple_scab",
+    "Apple___Black_rot",
+    "Apple___Cedar_apple_rust",
+    "Apple___healthy",
+    "Blueberry___healthy",
+    "Cherry_(including_sour)___Powdery_mildew",
+    "Cherry_(including_sour)___healthy",
+    "Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot",
+    "Corn_(maize)___Common_rust_",
+    "Corn_(maize)___Northern_Leaf_Blight",
+    "Corn_(maize)___healthy",
+    "Grape___Black_rot",
+    "Grape___Esca_(Black_Measles)",
+    "Grape___Leaf_blight_(Isariopsis_Leaf_Spot)",
+    "Grape___healthy",
+    "Orange___Haunglongbing_(Citrus_greening)",
+    "Peach___Bacterial_spot",
+    "Peach___healthy",
+    "Pepper,_bell___Bacterial_spot",
+    "Pepper,_bell___healthy",
+    "Potato___Early_blight",
+    "Potato___Late_blight",
+    "Potato___healthy",
+    "Raspberry___healthy",
+    "Soybean___healthy",
+    "Squash___Powdery_mildew",
+    "Strawberry___Leaf_scorch",
+    "Strawberry___healthy",
+    "Tomato___Bacterial_spot",
+    "Tomato___Early_blight",
+    "Tomato___Late_blight",
+    "Tomato___Leaf_Mold",
+    "Tomato___Septoria_leaf_spot",
+    "Tomato___Spider_mites Two-spotted_spider_mite",
+    "Tomato___Target_Spot",
+    "Tomato___Tomato_Yellow_Leaf_Curl_Virus",
+    "Tomato___Tomato_mosaic_virus",
+    "Tomato___healthy",
+]
+
+
 def load_disease_labels():
-    versions = [
-        os.path.join(DISEASE_DATASET_ROOT, name)
-        for name in os.listdir(DISEASE_DATASET_ROOT)
-        if os.path.isdir(os.path.join(DISEASE_DATASET_ROOT, name))
-    ]
-    if not versions:
-        raise FileNotFoundError(
-            f"No cached disease dataset found under '{DISEASE_DATASET_ROOT}'."
-        )
-    dataset_path = max(versions, key=os.path.getmtime)
-    train_dirs = []
-    for root, dirs, _ in os.walk(dataset_path):
-        if "train" in dirs:
-            train_dirs.append(os.path.join(root, "train"))
-    if not train_dirs:
-        raise FileNotFoundError(f"No train directory found in '{dataset_path}'.")
-    train_dir = train_dirs[0]
-    return sorted(
-        name
-        for name in os.listdir(train_dir)
-        if os.path.isdir(os.path.join(train_dir, name))
-    )
+    if os.path.isdir(DISEASE_DATASET_ROOT):
+        versions = [
+            os.path.join(DISEASE_DATASET_ROOT, name)
+            for name in os.listdir(DISEASE_DATASET_ROOT)
+            if os.path.isdir(os.path.join(DISEASE_DATASET_ROOT, name))
+        ]
+        if versions:
+            dataset_path = max(versions, key=os.path.getmtime)
+            train_dirs = []
+            for root, dirs, _ in os.walk(dataset_path):
+                if "train" in dirs:
+                    train_dirs.append(os.path.join(root, "train"))
+            if train_dirs:
+                train_dir = train_dirs[0]
+                return sorted(
+                    name
+                    for name in os.listdir(train_dir)
+                    if os.path.isdir(os.path.join(train_dir, name))
+                )
+    return DEFAULT_DISEASE_LABELS
 
 
 def classify_disease(image_path):
     if not os.path.isfile(image_path):
         raise FileNotFoundError(f"Image not found: {image_path}")
+    if not os.path.isfile(MODEL_DIR["disease"]):
+        raise FileNotFoundError(
+            f"Disease detection model not found at '{MODEL_DIR['disease']}'. "
+            "Please train or place 'crop_disease_cnn_model.keras' in 'crop_disease_detection/model/'."
+        )
     model = tf.keras.models.load_model(MODEL_DIR["disease"])
     image = tf.keras.utils.load_img(image_path, target_size=(128, 128))
     image_array = tf.keras.utils.img_to_array(image) / 255.0
